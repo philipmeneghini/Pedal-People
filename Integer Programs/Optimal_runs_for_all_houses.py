@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
 import gurobipy as gp
 from gurobipy import *
 from gurobipy import GRB
@@ -88,13 +82,13 @@ for id in ids:
 
 route_times = {}
 
-##If there are 39 routes we store all the time values for a route in the following array
+##Run the model for all houses
 m=gp.Model()
     
-##All the houses in a route given by the index in the matrix of the values for distance, elevation and so on above
+##All the houses serviced by Pedal People
 houses = 985
 
-    ##Variables
+##Variables
 x = m.addVars(houses, houses, vtype=GRB.BINARY, name = "x")
 r = m.addVar(vtype = GRB.INTEGER)
 u = m.addVars(houses, vtype=GRB.INTEGER)
@@ -106,28 +100,19 @@ for i in range(0,houses):
 m.setObjective(obj, GRB.MINIMIZE)
     
     
-    ##Constraints
+##Constraints
     
-    ##For each house there is a path in and out
-    ##We start at 2 because we do not want to include collection centers
-    ##Outgoing
+##For each house there is a path in and out
+##We start at 2 because we do not want to include collection centers
+
+##Outgoing
 m.addConstrs((gp.quicksum(x[i,j]for j in range(0, houses))==1 for i in range(0, houses-2)))
 
-    #res1=np.zeros(len(houses)-2)
-    #for i in  range(2, len(houses)):
-        #res1[i-2]=0
-        #for j in range(0, len(houses)):
-            #res1[i]+= float(x[i,j])
-        #m.addConstr(res1[i]==1)
         
-    ##Ingoing
-    #res2=np.zeros(len(houses))
-    #for i in range(2, len(houses)):
-        #for j in range(0, len(houses)):
-            #res2[i]+= x[j,i]
-        #m.addConstr(res2[i]=1)
+##Ingoing
 m.addConstrs((gp.quicksum(x[j,i] for j in range(0, houses))==1 for i in range(0, houses-2)))
-    ##Constraint for how many edges we can have leaving and entering the collection centers
+
+##Constraint for how many edges we can have leaving and entering the collection centers
 res4=0
 res5=0
 for i in range(0,houses-2):
@@ -138,50 +123,28 @@ for i in range(0,houses-2):
 m.addConstr(res4==r)
 m.addConstr(res5==r)
     
-    ##We need a constraint saying that there must be at least one run
+##We need a constraint saying that there must be at least one run
 m.addConstr(r>=1)
     
-    ##Constraint saying a bike cannot go from one house to the same house
+##Constraint saying a bike cannot go from one house to the same house
 for i in range(0, houses):
     for j in range(0, houses):
         if (i ==j):
             m.addConstr(x[i,j]==0)
-    ##We set up the constraint to make sure each run goes to a collection center and a bike does not get overly full 216 gallons
+            
+##We set up the constraint to make sure each run goes to a collection center and a bike does not get overly full (>216 gallons)
 for i in range(0,houses-2):
     for j in range(0, houses-2):
         if j !=i:
             m.addConstr(u[j]-u[i] + 216*(1-x[i,j])>= total_volume_by_id[index_to_id[j]])
-    
+
+##Making sure u variable has the correct assignment    
 for k in range(0, houses-2):
     m.addConstr(total_volume_by_id[index_to_id[k]]<=u[k])
     m.addConstr(u[k]<= 216)
-                            
-                            
-    ##Making it so full bikes do not go up hills greater than 3 degree incline (0.05233 radians)
-    #for j in range(0, len(houses)):
-        #for i in range(0,len(houses)):
-            #dist = distance_arr[id_to_index[str(houses[j])]][id_to_index[str(houses[i])]]
-            #elev = elevation_arr[id_to_index[str(houses[j])]][id_to_index[str(houses[i])]]
-            #rad= math.atan(elev/dist)
-            #if rad > 0.052359:
-                #m.addConstr(u[i] == total_volume_by_id[houses[i]])
-    
-    ##Optimize the model
+
+##Optimize the model
 m.optimize()
 for v in m.getVars():
     print(v.varName, v.x)
 print('resulting time: '+ str(obj.getValue()))
-    
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
